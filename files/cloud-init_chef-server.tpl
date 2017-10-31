@@ -14,10 +14,10 @@ runcmd:
 - sudo mkdir -p /var/chef/cache /var/chef/cookbooks
 
 # pull down this chef-server cookbook
-- wget -qO- https://supermarket.chef.io/cookbooks/chef-server/download | sudo tar xvzC /var/chef/cookbooks
+- curl -L https://supermarket.chef.io/cookbooks/chef-server/download | sudo tar xvzC /var/chef/cookbooks
 
 # pull down dependency cookbooks
-- wget -qO- https://supermarket.chef.io/cookbooks/chef-ingredient/download | sudo tar xvzC /var/chef/cookbooks
+- curl -L https://supermarket.chef.io/cookbooks/chef-ingredient/download | sudo tar xvzC /var/chef/cookbooks
 
 # GO
 - sudo chef-solo -o 'recipe[chef-server::default]'

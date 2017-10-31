@@ -8,6 +8,6 @@
 
 # Variable values for development
 terraform.tfvars
-
+.terraform.tfstate.lock.info 
 
 **/.DS_Store
