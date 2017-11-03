@@ -19,9 +19,20 @@ runcmd:
 # pull down dependency cookbooks
 - curl -L https://supermarket.chef.io/cookbooks/chef-ingredient/download | sudo tar xvzC /var/chef/cookbooks
 
-# GO
-- sudo chef-solo -o 'recipe[chef-server::default]'
+# create config json
+- 
 
+
+# GO
+#- sudo chef-solo -o 'recipe[chef-server::default]'
+- |
+  echo '{
+    "chef-server": {
+      "configuration": "notification_email 'chef-server@example.com'\n
+      nginx['cache_max_size'] = '3500m'"
+      }
+    }'|
+  chef-solo -j /dev/stdin -o 'recipe[chef-server::default]'
 
 
 
