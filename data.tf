@@ -4,7 +4,7 @@
 data "template_file" "user_data" {
     template = "${file("${path.module}/files/cloud-init_chef-server.tpl")}"
     vars {
-        #cm_hostname     = "${local.cm_hostname}"
+        attributes-json     = "${join(" ", split("\n",local.attributes-json))}"
     }
 }
 
@@ -13,7 +13,8 @@ data "template_file" "user_data" {
 data "template_file" "attributes-json" {
   template = "${file("${path.module}/files/attributes-json.tpl")}"
   vars {
-    addons  = "${join(",", formatlist("\\"%s\\"", split(",", var.chef_addons)))}"
+    #addons  = "${join(",", list("\\"%s\\"", split(",", var.chef_addons)))}"
+    addons  = "manage"
     domain  = "${var.instance["domain"]}"
     host    = "${var.instance["hostname"]}"
     license = "${var.chef_license}"

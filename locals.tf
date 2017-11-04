@@ -1,7 +1,9 @@
 
 locals {
 
-  user_data = "${data.template_file.user_data.rendered}"
+  user_data       = "${data.template_file.user_data.rendered}"
+  attributes-json = "${data.template_file.attributes-json.rendered}"
+
   config = {
     name = "chef-server"
     subnet_id = "subnet-a0de23f9"

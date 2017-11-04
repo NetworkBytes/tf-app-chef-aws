@@ -3,6 +3,11 @@
 #packages:
 #- vim
 #- mailx
+
+# Capture all subprocess output into a logfile
+# Useful for troubleshooting cloud-init issues
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+
 runcmd:
 - sudo yum install -y git yum-utils
 # https://github.com/chef-cookbooks/chef-server
@@ -20,22 +25,10 @@ runcmd:
 - curl -L https://supermarket.chef.io/cookbooks/chef-ingredient/download | sudo tar xvzC /var/chef/cookbooks
 
 # create config json
-- 
 
 
 # GO
 #- sudo chef-solo -o 'recipe[chef-server::default]'
-- |
-  echo '{
-    "chef-server": {
-      "configuration": "notification_email 'chef-server@example.com'\n
-      nginx['cache_max_size'] = '3500m'"
-      }
-    }'|
-  chef-solo -j /dev/stdin -o 'recipe[chef-server::default]'
+- ['su -c "echo ${attributes-json} > dna.json"']
+- chef-solo -j dna.json
 
-
-
-# Capture all subprocess output into a logfile
-# Useful for troubleshooting cloud-init issues
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
