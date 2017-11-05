@@ -1,15 +1,4 @@
-#cloud-config
-#package_upgrade: true
-#packages:
-#- vim
-#- mailx
-
-# Capture all subprocess output into a logfile
-# Useful for troubleshooting cloud-init issues
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
-
-#runcmd:
-#- sudo yum install -y git yum-utils
+sudo yum install -y git yum-utils
 # https://github.com/chef-cookbooks/chef-server
 
 # install chef-solo

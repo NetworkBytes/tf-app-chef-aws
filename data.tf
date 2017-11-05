@@ -1,13 +1,3 @@
-###################################
-## User Data Config script
-###################################
-data "template_file" "user_data" {
-    template = "${file("${path.module}/files/cloud-init_chef-server.tpl")}"
-    vars {
-        #attributes-json     = "${join(" ", split("\n",local.attributes-json))}"
-    }
-}
-
 
 # Chef provisiong attributes_json and .chef/dna.json templating
 data "template_file" "attributes-json" {
@@ -19,5 +9,15 @@ data "template_file" "attributes-json" {
     host    = "${var.instance["hostname"]}"
     license = "${var.chef_license}"
     version = "${var.chef_versions["server"]}"
+  }
+}
+
+# knife.rb templating
+data "template_file" "knife-rb" {
+  template = "${file("${path.module}/files/knife-rb.tpl")}"
+  vars {
+    user   = "${var.chef_user["username"]}"
+    fqdn   = "${var.instance["hostname"]}.${var.instance["domain"]}"
+    org    = "${var.chef_org["short"]}"
   }
 }
