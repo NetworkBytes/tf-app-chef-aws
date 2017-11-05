@@ -4,7 +4,7 @@
 data "template_file" "user_data" {
     template = "${file("${path.module}/files/cloud-init_chef-server.tpl")}"
     vars {
-        attributes-json     = "${join(" ", split("\n",local.attributes-json))}"
+        #attributes-json     = "${join(" ", split("\n",local.attributes-json))}"
     }
 }
 
