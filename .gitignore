@@ -11,3 +11,5 @@ terraform.tfvars
 .terraform.tfstate.lock.info 
 
 **/.DS_Store
+
+.chef/encrypted_data_bag_secret

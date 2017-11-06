@@ -3,8 +3,7 @@
 data "template_file" "attributes-json" {
   template = "${file("${path.module}/files/attributes-json.tpl")}"
   vars {
-    #addons  = "${join(",", list("\\"%s\\"", split(",", var.chef_addons)))}"
-    addons  = "manage"
+    addons  = "${join(",", split(",", var.chef_addons))}"
     domain  = "${var.instance["domain"]}"
     host    = "${var.instance["hostname"]}"
     license = "${var.chef_license}"
@@ -21,3 +20,4 @@ data "template_file" "knife-rb" {
     org    = "${var.chef_org["short"]}"
   }
 }
+

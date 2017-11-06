@@ -29,9 +29,9 @@ resource "null_resource" "chef-server_configure" {
   }
 
   connection {
-    host        = "${element(module.chef-server.public_ip, 0)}"
-    user        = "${module.chef-server.user}"
-    private_key = "${file(pathexpand(module.chef-server.key_file_private))}"
+    host        = "${local.public_ip}"
+    user        = "${local.user}"
+    private_key = "${file(pathexpand(local.key_file_private))}"
 
   }
 
@@ -50,7 +50,7 @@ resource "null_resource" "chef-server_configure" {
       "sudo rm -rf /var/chef/ssl       ; sudo mkdir -p /var/chef/ssl",
 
       "echo Downloading cookbooks",
-      "#for DEP in  <some var> ; do curl -sL https://supermarket.chef.io/cookbooks/${DEP}/download | sudo tar xzC /var/chef/cookbooks; done"
+      "echo for DEP in  <some var list> ; do curl -sL https://supermarket.chef.io/cookbooks/$ { DEP}/download | sudo tar xzC /var/chef/cookbooks; done"
     ]
   }
 
@@ -92,12 +92,12 @@ resource "null_resource" "chef-server_configure" {
   # Correct ownership on .chef so we can harvest files
   provisioner "remote-exec" {
     inline = [
-      "sudo chown -R ${lookup(var.ami_usermap, var.ami_os)} .chef"
+      "sudo chown -R ${local.user} .chef"
     ]
   }
   # Copy back .chef files
   provisioner "local-exec" {
-    command = "scp -r -o stricthostkeychecking=no -i ${var.instance_key["file"]} ${lookup(var.ami_usermap, var.ami_os)}@${self.public_ip}:.chef/* .chef/"
+    command = "scp -r -o stricthostkeychecking=no -i ${local.key_file_private} ${local.user}@${local.public_ip}:.chef/* .chef/"
   }
   # Replace local .chef/user.pem file with generated one
   provisioner "local-exec" {
@@ -130,9 +130,9 @@ resource "null_resource" "chef-server_configure" {
     attributes_json = "${data.template_file.attributes-json.rendered}"
     environment     = "_default"
     log_to_file     = "${var.chef_log}"
-    node_name       = "${aws_instance.chef-server.tags.Name}"
+    node_name       = "${local.public_dns}"
     run_list        = ["recipe[system::default]","recipe[chef-client::default]","recipe[chef-client::config]","recipe[chef-client::cron]","recipe[chef-client::delete_validation]","recipe[chef-server::default]","recipe[chef-server::addons]"]
-    server_url      = "https://${aws_instance.chef-server.tags.Name}/organizations/${var.chef_org["short"]}"
+    server_url      = "https://${local.public_dns}/organizations/${var.chef_org["short"]}"
     skip_install    = true
     user_name       = "${var.chef_user["username"]}"
     user_key        = "${file(".chef/user.pem")}"
@@ -145,9 +145,9 @@ data "template_file" "chef-server-creds" {
   template = "${file("${path.module}/files/chef-server-creds.tpl")}"
   vars {
     user   = "${var.chef_user["username"]}"
-    pass   = "${base64sha256(aws_instance.chef-server.id)}"
+    pass   = "${base64sha256(join(",", module.chef-server.id))}"
     user_p = ".chef/${var.chef_user["username"]}.pem"
-    fqdn   = "${aws_instance.chef-server.tags.Name}"
+    fqdn   = "${local.public_dns}"
     org    = "${var.chef_org["short"]}"
   }
 }
