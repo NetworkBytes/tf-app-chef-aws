@@ -12,4 +12,7 @@ terraform.tfvars
 
 **/.DS_Store
 
-.chef/encrypted_data_bag_secret
+.chef/*
+!.chef/user.pem
+
+

@@ -50,7 +50,7 @@ resource "null_resource" "chef-server_configure" {
       "sudo rm -rf /var/chef/ssl       ; sudo mkdir -p /var/chef/ssl",
 
       "echo Downloading cookbooks",
-      "echo for DEP in  <some var list> ; do curl -sL https://supermarket.chef.io/cookbooks/$ { DEP}/download | sudo tar xzC /var/chef/cookbooks; done"
+      "echo 'for DEP in  <some var list> ; do curl -sL https://supermarket.chef.io/cookbooks/$ { DEP}/download | sudo tar xzC /var/chef/cookbooks; done'"
     ]
   }
 
