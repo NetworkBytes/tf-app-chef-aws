@@ -6,22 +6,6 @@ module "chef-server" {
 }
 
 
-#
-# Local prep
-#
-resource "null_resource" "chef-prep" {
-  provisioner "local-exec" {
-    command = <<-EOF
-      [ -f .chef/encrypted_data_bag_secret ] && rm -f .chef/encrypted_data_bag_secret
-      openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
-      echo "Local prep complete"
-      EOF
-  }
-}
-
-
-
-
 
 resource "null_resource" "chef-server_configure" {
   triggers {
@@ -35,47 +19,77 @@ resource "null_resource" "chef-server_configure" {
 
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "sudo systemctl disable firewalld",
-      "sudo systemctl stop firewalld",
 
-      "mkdir -p .chef",
-      "curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}",
-      "echo 'Version ${var.chef_versions["client"]} of chef-client installed'",
+  provisioner "local-exec" {
+    command = <<-EOF
+      echo "Gererate encrypted_data_bag_secret"
+      rm -f .chef/encrypted_data_bag_secret
+      openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
 
-      "echo Preparing directories",
-      "sudo rm -rf /var/chef/cookbooks ; sudo mkdir -p /var/chef/cookbooks",
-      "sudo rm -rf /var/chef/cache     ; sudo mkdir -p /var/chef/cache",
-      "sudo rm -rf /var/chef/ssl       ; sudo mkdir -p /var/chef/ssl",
+      #echo "Gererate Chef Server Keys"
+      ## TODO make this work
+      #rm -f .chef/server.{pem,pub} 
+      #ssh-keygen -b 2048 -t rsa -f .chef/server -q -N '' -C 'chef_server_key'
+      
 
-      "echo Downloading cookbooks",
-      "echo 'for DEP in  <some var list> ; do curl -sL https://supermarket.chef.io/cookbooks/$ { DEP}/download | sudo tar xzC /var/chef/cookbooks; done'"
-    ]
+      EOF
   }
-
-
-  # Put certificate key
-  provisioner "file" {
-    source         = "${var.chef_ssl["key"]}"
-    destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
-  }
-  # Put certificate
-  provisioner "file" {
-    source         = "${var.chef_ssl["cert"]}"
-    destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
-  }
-  # Write .chef/dna.json for chef-solo run
+  ## Put certificate key
+  #provisioner "file" {
+  #  source         = "${var.chef_ssl["key"]}"
+  #  destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
+  #}
+  ## Put certificate
+  #provisioner "file" {
+  #  source         = "${var.chef_ssl["cert"]}"
+  #  destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
+  #}
+  # Upload Attributes file .chef/dna.json for the chef-solo run
   provisioner "file" {
     content        = "${data.template_file.attributes-json.rendered}"
     destination    = ".chef/dna.json"
   }
-  # Move certs
+  ## Move certs
+  #provisioner "remote-exec" {
+  #  inline = [
+  #    "sudo mv .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/"
+  #  ]
+  #}
   provisioner "remote-exec" {
-    inline = [
-      "sudo mv .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/"
-    ]
+    inline = <<-EOF
+
+      #/sbin/service iptables status >/dev/null 2>&1
+      #if [ $? = 0 ]; then
+      #    echo "All systems go."
+      #else
+      #    echo "Houston, we have a problem."
+      #fi
+      #echo Disabling firewall
+      #sudo systemctl disable firewalld
+      #sudo systemctl stop firewalld
+
+      mkdir -p .chef
+      #curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
+      curl -L https://omnitruck.chef.io/install.sh | sudo bash
+
+      echo 'Version ${var.chef_versions["client"]} of chef-client installed'
+
+      echo Preparing directories
+      sudo rm -rf /var/chef/cookbooks ; sudo mkdir -p /var/chef/cookbooks
+      sudo rm -rf /var/chef/cache     ; sudo mkdir -p /var/chef/cache
+      sudo rm -rf /var/chef/ssl       ; sudo mkdir -p /var/chef/ssl
+
+      echo Downloading cookbooks
+      for DEP in chef-client chef-server chef-ingredient; do curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar xzC /var/chef/cookbooks; done
+      #sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
+      sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
+
+
+    EOF
   }
+
+
+
   # Run chef-solo and get us a Chef server
   provisioner "remote-exec" {
     inline = [

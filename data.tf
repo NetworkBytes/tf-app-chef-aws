@@ -6,7 +6,7 @@ data "template_file" "attributes-json" {
     addons  = "${join(",", split(",", var.chef_addons))}"
     domain  = "${var.instance["domain"]}"
     host    = "${var.instance["hostname"]}"
-    license = "${var.chef_license}"
+    license = "true"
     version = "${var.chef_versions["server"]}"
   }
 }

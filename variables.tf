@@ -12,11 +12,6 @@ variable "chef_addons" {
   description      = "Comma seperated list of addons to install. Default: `manage,push-jobs-server,reporting`"
   default          = "manage,push-jobs-server,reporting"
 }
-variable "chef_license" {
-  type             = "string"
-  description      = "Acceptance of the Chef MLSA: https://www.chef.io/online-master-agreement/"
-  default          = "true"
-}
 variable "chef_log" {
   #type             = "boolean"
   description      = "Log chef provisioner to file"

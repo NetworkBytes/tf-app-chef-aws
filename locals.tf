@@ -3,6 +3,7 @@ locals {
 
   attributes-json = "${data.template_file.attributes-json.rendered}"
 
+  #TODO generate sg's and subnets
   config = {
     name = "chef-server"
     subnet_id = "subnet-a0de23f9"
