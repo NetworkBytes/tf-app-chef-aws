@@ -21,3 +21,14 @@ data "template_file" "knife-rb" {
   }
 }
 
+# Generate pretty output format
+data "template_file" "chef-server-creds" {
+  template = "${file("${path.module}/files/chef-server-creds.tpl")}"
+  vars {
+    user   = "${var.chef_user["username"]}"
+    pass   = "${base64sha256(join(",", module.chef-server.id))}"
+    user_p = ".chef/${var.chef_user["username"]}.pem"
+    fqdn   = "${local.public_dns}"
+    org    = "${var.chef_org["short"]}"
+  }
+}

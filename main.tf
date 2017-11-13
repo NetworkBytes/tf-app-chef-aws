@@ -84,53 +84,51 @@ resource "null_resource" "chef-server_configure" {
       #sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
       sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
 
+      echo Running chef-solo to install Chef server
+      sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
 
+      echo Creating Chef user and org
+      sudo chef-server-ctl user-create ${var.chef_user["username"]} ${var.chef_user["first"]} ${var.chef_user["last"]} ${var.chef_user["email"]} ${base64sha256(self.id)} -f .chef/${var.chef_user["username"]}.pem
+      sudo chef-server-ctl org-create ${var.chef_org["short"]} '${var.chef_org["long"]}' --association_user ${var.chef_user["username"]} --filename .chef/${var.chef_org["short"]}-validator.pem
+
+      echo Correct ownership on .chef so we can harvest files
+      sudo chown -R ${local.user} .chef
+  
     EOF
   }
 
 
 
-  # Run chef-solo and get us a Chef server
-  provisioner "remote-exec" {
-    inline = [
-      "sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'",
-    ]
-  }
-  # Create first user and org
-  provisioner "remote-exec" {
-    inline = [
-      "sudo chef-server-ctl user-create ${var.chef_user["username"]} ${var.chef_user["first"]} ${var.chef_user["last"]} ${var.chef_user["email"]} ${base64sha256(self.id)} -f .chef/${var.chef_user["username"]}.pem",
-      "sudo chef-server-ctl org-create ${var.chef_org["short"]} '${var.chef_org["long"]}' --association_user ${var.chef_user["username"]} --filename .chef/${var.chef_org["short"]}-validator.pem",
-    ]
-  }
-  # Correct ownership on .chef so we can harvest files
-  provisioner "remote-exec" {
-    inline = [
-      "sudo chown -R ${local.user} .chef"
-    ]
-  }
-  # Copy back .chef files
+  
   provisioner "local-exec" {
-    command = "scp -r -o stricthostkeychecking=no -i ${local.key_file_private} ${local.user}@${local.public_ip}:.chef/* .chef/"
-  }
-  # Replace local .chef/user.pem file with generated one
-  provisioner "local-exec" {
-    command = "cp -f .chef/${var.chef_user["username"]}.pem .chef/user.pem"
-  }
-  # Generate knife.rb
-  provisioner "local-exec" {
-    command = <<-EOC
-      [ -f .chef/knife.rb ] && rm -f .chef/knife.rb
-      cat > .chef/knife.rb <<EOF
+    inline = <<-EOF
+
+      echo Copy .chef files to local terraform directory
+      scp -r -o stricthostkeychecking=no -i ${local.key_file_private} ${local.user}@${local.public_ip}:.chef/* .chef/
+  
+      echo Replace local .chef/user.pem file with generated one
+      cp -f .chef/${var.chef_user["username"]}.pem .chef/user.pem
+
+      echo Generate knife.rb
+      cat > .chef/knife.rb <<EOK
       ${data.template_file.knife-rb.rendered}
-      EOF
+      EOK
+
+      echo  Write generated template file
+      cat > .chef/chef-server.creds <<EOC
+      ${data.template_file.chef-server-creds.rendered}
       EOC
+
+    EOF
   }
+
   # Upload knife.rb
   provisioner "file" {
     content        = "${data.template_file.knife-rb.rendered}"
     destination    = ".chef/knife.rb"
   }
+
+
   # Push in cookbooks
   provisioner "remote-exec" {
     inline = [
@@ -150,29 +148,5 @@ resource "null_resource" "chef-server_configure" {
     skip_install    = true
     user_name       = "${var.chef_user["username"]}"
     user_key        = "${file(".chef/user.pem")}"
-  }
-}
-
-
-# Generate pretty output format
-data "template_file" "chef-server-creds" {
-  template = "${file("${path.module}/files/chef-server-creds.tpl")}"
-  vars {
-    user   = "${var.chef_user["username"]}"
-    pass   = "${base64sha256(join(",", module.chef-server.id))}"
-    user_p = ".chef/${var.chef_user["username"]}.pem"
-    fqdn   = "${local.public_dns}"
-    org    = "${var.chef_org["short"]}"
-  }
-}
-# Write generated template file
-resource "null_resource" "write-files" {
-  provisioner "local-exec" {
-    command = <<-EOC
-      [ -f .chef/chef-server.creds ] && rm -f .chef/chef-server.creds
-      cat > .chef/chef-server.creds <<EOF
-      ${data.template_file.chef-server-creds.rendered}
-      EOF
-      EOC
   }
 }
