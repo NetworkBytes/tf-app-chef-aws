@@ -49,7 +49,7 @@ resource "null_resource" "chef-server_configure" {
   # Upload Attributes file .chef/dna.json for the chef-solo run
   provisioner "file" {
     content        = "${data.template_file.attributes-json.rendered}"
-    destination    = ".chef/dna.json"
+    destination    = "/home/${locals.user}/.chef/dna.json"
   }
   # Move certs
   #provisioner "remote-exec" {
