@@ -22,12 +22,14 @@ resource "null_resource" "chef-server_configure" {
 
   provisioner "local-exec" {
     command = <<-EOF
+      set -e
+
       echo "Gererate encrypted_data_bag_secret"
       rm -f .chef/encrypted_data_bag_secret
       openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
 
-      #echo "Gererate Chef Server Keys"
-      ## TODO make this work
+      echo "Gererate Chef Server Keys"
+      # TODO make this work
       #rm -f .chef/server.{pem,pub} 
       #ssh-keygen -b 2048 -t rsa -f .chef/server -q -N '' -C 'chef_server_key'
       
@@ -39,7 +41,7 @@ resource "null_resource" "chef-server_configure" {
   #  source         = "${var.chef_ssl["key"]}"
   #  destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
   #}
-  ## Put certificate
+  # Put certificate
   #provisioner "file" {
   #  source         = "${var.chef_ssl["cert"]}"
   #  destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
@@ -49,7 +51,7 @@ resource "null_resource" "chef-server_configure" {
     content        = "${data.template_file.attributes-json.rendered}"
     destination    = ".chef/dna.json"
   }
-  ## Move certs
+  # Move certs
   #provisioner "remote-exec" {
   #  inline = [
   #    "sudo mv .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/"
@@ -57,18 +59,14 @@ resource "null_resource" "chef-server_configure" {
   #}
   provisioner "remote-exec" {
     inline = <<-EOF
+      set -e
 
-      #/sbin/service iptables status >/dev/null 2>&1
-      #if [ $? = 0 ]; then
-      #    echo "All systems go."
-      #else
-      #    echo "Houston, we have a problem."
-      #fi
+      #TODO centos aws image doesnt have any FW enabled
       #echo Disabling firewall
       #sudo systemctl disable firewalld
       #sudo systemctl stop firewalld
 
-      mkdir -p .chef
+      [[ -d .chef ]] || sudo mkdir -p .chef
       #curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
       curl -L https://omnitruck.chef.io/install.sh | sudo bash
 
@@ -91,7 +89,7 @@ resource "null_resource" "chef-server_configure" {
       sudo chef-server-ctl user-create ${var.chef_user["username"]} ${var.chef_user["first"]} ${var.chef_user["last"]} ${var.chef_user["email"]} ${base64sha256(self.id)} -f .chef/${var.chef_user["username"]}.pem
       sudo chef-server-ctl org-create ${var.chef_org["short"]} '${var.chef_org["long"]}' --association_user ${var.chef_user["username"]} --filename .chef/${var.chef_org["short"]}-validator.pem
 
-      echo Correct ownership on .chef so we can harvest files
+      echo Correct ownership on .chef so we can scp the files
       sudo chown -R ${local.user} .chef
   
     EOF
@@ -101,7 +99,8 @@ resource "null_resource" "chef-server_configure" {
 
   
   provisioner "local-exec" {
-    inline = <<-EOF
+    command = <<-EOF
+      set -e
 
       echo Copy .chef files to local terraform directory
       scp -r -o stricthostkeychecking=no -i ${local.key_file_private} ${local.user}@${local.public_ip}:.chef/* .chef/
