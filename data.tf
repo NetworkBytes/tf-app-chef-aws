@@ -3,7 +3,7 @@
 data "template_file" "attributes-json" {
   template = "${file("${path.module}/files/attributes-json.tpl")}"
   vars {
-    addons  = "${join(",", split(",", var.chef_addons))}"
+    addons  = "${join(",", split(",", "\"${var.chef_addons}\""))}"
     domain  = "${var.instance["domain"]}"
     host    = "${var.instance["hostname"]}"
     license = "true"

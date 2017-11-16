@@ -36,6 +36,13 @@ resource "null_resource" "chef-server_configure" {
 
       EOF
   }
+
+
+  provisioner "remote-exec" {
+    inline          = "[[ -d .chef ]] || mkdir -p .chef; echo Created .chef directory"
+  }
+
+
   ## Put certificate key
   #provisioner "file" {
   #  source         = "${var.chef_ssl["key"]}"
@@ -49,7 +56,7 @@ resource "null_resource" "chef-server_configure" {
   # Upload Attributes file .chef/dna.json for the chef-solo run
   provisioner "file" {
     content        = "${data.template_file.attributes-json.rendered}"
-    destination    = "/home/${locals.user}/.chef/dna.json"
+    destination    = ".chef/dna.json"
   }
   # Move certs
   #provisioner "remote-exec" {
@@ -73,14 +80,13 @@ resource "null_resource" "chef-server_configure" {
       echo 'Version ${var.chef_versions["client"]} of chef-client installed'
 
       echo Preparing directories
-      sudo rm -rf /var/chef/cookbooks ; sudo mkdir -p /var/chef/cookbooks
-      sudo rm -rf /var/chef/cache     ; sudo mkdir -p /var/chef/cache
-      sudo rm -rf /var/chef/ssl       ; sudo mkdir -p /var/chef/ssl
+      for DEP in "cookbooks cache ssl"; do sudo rm -rf /var/chef/$DIR; sudo mkdir -p /var/chef/$DIR; done
 
       echo Downloading cookbooks
-      for DEP in chef-client chef-server chef-ingredient; do curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar xzC /var/chef/cookbooks; done
-      #sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
-      sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
+      for DEP in "chef-client chef-server chef-ingredient system"; do 
+        curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar xzC /var/chef/cookbooks;
+        echo "   downloaded cookbook $DEP" 
+      done
 
       echo Running chef-solo to install Chef server
       sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
@@ -128,12 +134,15 @@ resource "null_resource" "chef-server_configure" {
   }
 
 
-  # Push in cookbooks
+  # Upload in cookbooks into Chef Server
   provisioner "remote-exec" {
-    inline = [
-      "sudo knife cookbook upload -a -c .chef/knife.rb --cookbook-path /var/chef/cookbooks",
-      "sudo rm -rf /var/chef/cookbooks",
-    ]
+    inline = <<-EOF
+      set -e
+
+      sudo knife cookbook upload -a -c .chef/knife.rb --cookbook-path /var/chef/cookbooks
+      sudo rm -rf /var/chef/cookbooks
+
+      EOF
   }
 
   # Provision with Chef
