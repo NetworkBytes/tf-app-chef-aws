@@ -3,6 +3,16 @@ locals {
 
   attributes-json = "${data.template_file.attributes-json.rendered}"
 
+  chef_ssl = {
+    type          = "map"
+    default       = {
+      file_base   = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}"
+      cert        = "${var.chef_ssl["cert"] == "" ? "${local.chef_ssl["file_base"]}.cert" : var.chef_ssl["cert"]}"
+      key         = "${var.chef_ssl["key"]  == "" ? ".${local.chef_ssl["file_base"]}.key"  : var.chef_ssl["key"]}"
+    }
+  }
+
+
   #TODO generate sg's and subnets
   config = {
     name = "chef-server"

@@ -23,18 +23,17 @@ resource "null_resource" "chef-server_configure" {
   provisioner "local-exec" {
     command = <<-EOF
       set -e
-
-      echo "Gererate encrypted_data_bag_secret"
+      set +x
+      echo ** Gererate encrypted_data_bag_secret
       rm -f .chef/encrypted_data_bag_secret
       openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
 
-      echo "Gererate Chef Server Keys"
-      # TODO make this work
-      #rm -f .chef/server.{pem,pub} 
-      #ssh-keygen -b 2048 -t rsa -f .chef/server -q -N '' -C 'chef_server_key'
+      echo ** Gererate Chef Keys
+      rm -f ${local.chef_ssl["file_base"]}.{pem,pub} 
+      ssh-keygen -b 2048 -t rsa -f ${local.chef_ssl["file_base"]} -q -N '' -C 'chef'
       
 
-      EOF
+    EOF  
   }
 
 
@@ -45,7 +44,7 @@ resource "null_resource" "chef-server_configure" {
 
   ## Put certificate key
   #provisioner "file" {
-  #  source         = "${var.chef_ssl["key"]}"
+  #  source         = "${local.chef_ssl["key"]}"
   #  destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
   #}
   # Put certificate
@@ -58,7 +57,7 @@ resource "null_resource" "chef-server_configure" {
     content        = "${data.template_file.attributes-json.rendered}"
     destination    = ".chef/dna.json"
   }
-  # Move certs
+  # Move chef-server_instance_ids
   #provisioner "remote-exec" {
   #  inline = [
   #    "sudo mv .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/"
@@ -69,7 +68,7 @@ resource "null_resource" "chef-server_configure" {
       set -e
 
       #TODO centos aws image doesnt have any FW enabled
-      #echo Disabling firewall
+      #echo ** Disabling firewall
       #sudo systemctl disable firewalld
       #sudo systemctl stop firewalld
 
@@ -77,25 +76,27 @@ resource "null_resource" "chef-server_configure" {
       #curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
       curl -L https://omnitruck.chef.io/install.sh | sudo bash
 
-      echo 'Version ${var.chef_versions["client"]} of chef-client installed'
+      echo '** Version ${var.chef_versions["client"]} of chef-client installed'
 
-      echo Preparing directories
-      for DEP in "cookbooks cache ssl"; do sudo rm -rf /var/chef/$DIR; sudo mkdir -p /var/chef/$DIR; done
+      echo ** Preparing directories
+      for DIR in cookbooks cache ssl; do sudo rm -rf /var/chef/$DIR; sudo mkdir -p /var/chef/$DIR; done
 
-      echo Downloading cookbooks
-      for DEP in "chef-client chef-server chef-ingredient system"; do 
-        curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar xzC /var/chef/cookbooks;
-        echo "   downloaded cookbook $DEP" 
+      echo ** Downloading cookbooks
+      for DEP in chef-client chef-server chef-ingredient system; do 
+        echo "   - downloading cookbook $DEP" 
+        curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar --warning=no-unknown-keyword -xzC /var/chef/cookbooks;
       done
 
-      echo Running chef-solo to install Chef server
-      sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
+      echo ** Running chef-solo to install Chef server
+      #sudo chef-solo -j .chef/dna.json -o 'recipe[system::default],recipe[chef-server::default],recipe[chef-server::addons]'
+      sudo chef-solo -vv -j .chef/dna.json
 
-      echo Creating Chef user and org
+
+      echo ** Creating Chef user and org
       sudo chef-server-ctl user-create ${var.chef_user["username"]} ${var.chef_user["first"]} ${var.chef_user["last"]} ${var.chef_user["email"]} ${base64sha256(self.id)} -f .chef/${var.chef_user["username"]}.pem
       sudo chef-server-ctl org-create ${var.chef_org["short"]} '${var.chef_org["long"]}' --association_user ${var.chef_user["username"]} --filename .chef/${var.chef_org["short"]}-validator.pem
 
-      echo Correct ownership on .chef so we can scp the files
+      echo ** Correct ownership on .chef so we can scp the files
       sudo chown -R ${local.user} .chef
   
     EOF

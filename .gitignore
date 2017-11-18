@@ -13,6 +13,5 @@ terraform.tfvars
 **/.DS_Store
 
 .chef/*
-!.chef/user.pem
 
 
