@@ -56,21 +56,19 @@ resource "null_resource" "chef-server_configure" {
   provisioner "remote-exec" {
     inline = <<-EOF
       set -e
-      set -x
 
       #TODO centos aws image doesnt have any FW enabled
       #echo ** Disabling firewall
       #sudo systemctl disable firewalld
       #sudo systemctl stop firewalld
 
-      [[ -d .chef ]] || sudo mkdir -p .chef
-      #curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
-      curl -L https://omnitruck.chef.io/install.sh | sudo bash
 
-      echo '** Version ${var.chef_versions["client"]} of chef-client installed'
+      echo "** Installing Chef client version ${var.chef_versions["client"]}"
+      curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
+      #curl -L https://omnitruck.chef.io/install.sh | sudo bash
 
       echo "** Cleaning and Preparing directories"
-      for DIR in cookbooks cache ssl; do sudo rm -rf /var/chef/$DIR; sudo mkdir -p /var/chef/$DIR; done
+      for DIR in cookbooks cache ssl; do sudo rm -rf /var/chef/$DIR; sudo mkdir -vp /var/chef/$DIR; done
 
       echo "** Copying certs /${var.instance["hostname"]}.${var.instance["domain"]} to /var/chef/ssl"
       sudo cp -f .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/
@@ -98,7 +96,7 @@ resource "null_resource" "chef-server_configure" {
 
 
 
-  
+  # Copy things back to local
   provisioner "local-exec" {
     command = <<-EOF
       set -e
