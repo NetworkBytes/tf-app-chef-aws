@@ -23,15 +23,10 @@ resource "null_resource" "chef-server_configure" {
   provisioner "local-exec" {
     command = <<-EOF
       set -e
-      set -x
-
+      
       echo "** Gererate encrypted_data_bag_secret"
       rm -f .chef/encrypted_data_bag_secret
       openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
-
-      echo "** Gererate Chef Keys"
-      rm -f ${local.chef_ssl_file_base} ${local.chef_ssl_file_base}.pub
-      ssh-keygen -b 2048 -t rsa -f ${local.chef_ssl_file_base} -q -N '' -C 'chef'
 
     EOF
   }
@@ -44,12 +39,12 @@ resource "null_resource" "chef-server_configure" {
 
   ## Put certificate key
   provisioner "file" {
-    source         = "${local.chef_ssl_key}"
+    content        = "${local.chef_ssl_cert}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
   }
   # Put certificate
   provisioner "file" {
-    source         = "${local.chef_ssl_cert}"
+    content        = "${local.chef_ssl_private_key}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
   }
   # Upload Attributes file .chef/dna.json for the chef-solo run
@@ -57,12 +52,7 @@ resource "null_resource" "chef-server_configure" {
     content        = "${data.template_file.attributes-json.rendered}"
     destination    = ".chef/dna.json"
   }
-  # Move chef-server_instance_ids
-  #provisioner "remote-exec" {
-  #  inline = [
-  #    "sudo mv .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/"
-  #  ]
-  #}
+
   provisioner "remote-exec" {
     inline = <<-EOF
       set -e
@@ -79,8 +69,11 @@ resource "null_resource" "chef-server_configure" {
 
       echo '** Version ${var.chef_versions["client"]} of chef-client installed'
 
-      echo "** Preparing directories"
+      echo "** Cleaning and Preparing directories"
       for DIR in cookbooks cache ssl; do sudo rm -rf /var/chef/$DIR; sudo mkdir -p /var/chef/$DIR; done
+
+      echo "** Copying certs /${var.instance["hostname"]}.${var.instance["domain"]} to /var/chef/ssl"
+      sudo cp -f .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/
 
       echo "** Downloading cookbooks"
       for DEP in chef-client chef-server chef-ingredient system; do 
