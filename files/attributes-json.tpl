@@ -7,13 +7,7 @@
     "accept_license": ${license},
     "addons": [${addons}],
     "api_fqdn": "${host}.${domain}",
-    "configuration": { 
-      "nginx['ssl_certificate'] = '/var/chef/ssl/${host}.${domain}.pem'",
-      "nginx['ssl_certificate_key'] = '/var/chef/ssl/${host}.${domain}.key'",
-      "chef-server-webui": {
-        "enable": true
-      }
-    },
+    "configuration": "nginx['ssl_certificate'] = '/var/chef/ssl/${host}.${domain}.pem'\nnginx['ssl_certificate_key'] = '/var/chef/ssl/${host}.${domain}.key'",
     "topology": "standalone",
     "version": "${version}"
   },

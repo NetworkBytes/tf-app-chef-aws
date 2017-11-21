@@ -48,7 +48,7 @@ variable "chef_versions" {
   description      = "Chef software versions"
   default          = {
     client         = "13.6.4"
-    server         = ""
+    server         = "12.17.5"
   }
 }
 variable "instance" {

@@ -39,12 +39,12 @@ resource "null_resource" "chef-server_configure" {
 
   ## Put certificate key
   provisioner "file" {
-    content        = "${local.chef_ssl_cert}"
+    content        = "${local.chef_ssl_private_key}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
   }
   # Put certificate
   provisioner "file" {
-    content        = "${local.chef_ssl_private_key}"
+    content        = "${local.chef_ssl_cert}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
   }
   # Upload Attributes file .chef/dna.json for the chef-solo run
@@ -67,7 +67,7 @@ resource "null_resource" "chef-server_configure" {
       curl -L https://omnitruck.chef.io/install.sh | sudo bash -s -- -v ${var.chef_versions["client"]}
       #curl -L https://omnitruck.chef.io/install.sh | sudo bash
 
-      echo "** Cleaning and Preparing directories"
+      echo "** Preparing directories"
       for DIR in cookbooks cache ssl; do sudo rm -rf /var/chef/$DIR; sudo mkdir -vp /var/chef/$DIR; done
 
       echo "** Copying certs /${var.instance["hostname"]}.${var.instance["domain"]} to /var/chef/ssl"
@@ -85,6 +85,8 @@ resource "null_resource" "chef-server_configure" {
 
 
       echo "** Creating Chef user and org"
+      sudo chef-server-ctl org-list  |grep -q ${var.chef_org["short"]}     && sudo chef-server-ctl org-delete  ${var.chef_org["short"]} -y
+      sudo chef-server-ctl user-list |grep -q ${var.chef_user["username"]} && sudo chef-server-ctl user-delete ${var.chef_user["username"]} -y
       sudo chef-server-ctl user-create ${var.chef_user["username"]} ${var.chef_user["first"]} ${var.chef_user["last"]} ${var.chef_user["email"]} ${base64sha256(self.id)} -f .chef/${var.chef_user["username"]}.pem
       sudo chef-server-ctl org-create ${var.chef_org["short"]} '${var.chef_org["long"]}' --association_user ${var.chef_user["username"]} --filename .chef/${var.chef_org["short"]}-validator.pem
 
@@ -101,19 +103,19 @@ resource "null_resource" "chef-server_configure" {
     command = <<-EOF
       set -e
 
-      echo Copy .chef files to local terraform directory
+      echo "** Copy .chef files to local terraform directory"
       scp -r -o stricthostkeychecking=no -i ${local.key_file_private} ${local.user}@${local.public_ip}:.chef/* .chef/
   
-      echo Replace local .chef/user.pem file with generated one
+      echo "** Replace local .chef/user.pem file with generated one"
       cp -f .chef/${var.chef_user["username"]}.pem .chef/user.pem
 
-      echo Generate knife.rb
-      cat > .chef/knife.rb <<EOK
+      echo "** Generate knife.rb"
+      cat > .chef/knife.rb <<-EOK
       ${data.template_file.knife-rb.rendered}
       EOK
 
       echo  Write generated template file
-      cat > .chef/chef-server.creds <<EOC
+      cat > .chef/chef-server.creds <<-EOC
       ${data.template_file.chef-server-creds.rendered}
       EOC
 
@@ -127,11 +129,13 @@ resource "null_resource" "chef-server_configure" {
   }
 
 
-  # Upload in cookbooks into Chef Server
   provisioner "remote-exec" {
     inline = <<-EOF
       set -e
+      echo "** Fetching the ssl cert from the server"
+      knife ssl fetch 
 
+      echo "** Uploading cookbooks into the Chef Server"
       sudo knife cookbook upload -a -c .chef/knife.rb --cookbook-path /var/chef/cookbooks
       sudo rm -rf /var/chef/cookbooks
 

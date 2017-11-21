@@ -2,7 +2,7 @@
 ## THIS IS NOT RECOMMENDED FOR PRODUCTION SERVICES.
 
 resource "tls_private_key" "chef" {
-  algorithm = "ECDSA"
+  algorithm = "RSA"
 }
 
 resource "tls_self_signed_cert" "chef" {
