@@ -28,6 +28,8 @@ resource "null_resource" "chef-server_configure" {
       rm -f .chef/encrypted_data_bag_secret
       openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
 
+      openssl req -x509 -newkey rsa:4096 -keyout .chef/localhost.localdomain.key -out localhost.localdomain.pem -days 1000 -nodes -subj "/CN=localhost.localdomain"
+
     EOF
   }
 
