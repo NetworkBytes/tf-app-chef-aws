@@ -3,8 +3,8 @@ locals {
 
   attributes-json = "${data.template_file.attributes-json.rendered}"
 
-  chef_ssl_cert         = "${var.chef_ssl["cert"] == "" ? tls_self_signed_cert.chef.cert_pem : var.chef_ssl["cert"]}"
-  chef_ssl_private_key  = "${var.chef_ssl["key"]  == "" ? tls_private_key.chef.private_key_pem  : var.chef_ssl["key"]}"
+  chef_ssl_cert         = "${var.chef_ssl["cert"] == "" ? ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem" : var.chef_ssl["cert"]}"
+  chef_ssl_private_key  = "${var.chef_ssl["key"]  == "" ? ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key" : var.chef_ssl["key"]}"
 
 
   #TODO generate sg's and subnets

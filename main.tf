@@ -28,7 +28,11 @@ resource "null_resource" "chef-server_configure" {
       rm -f .chef/encrypted_data_bag_secret
       openssl rand -base64 512 | tr -d '\r\n' > .chef/encrypted_data_bag_secret
 
-      openssl req -x509 -newkey rsa:4096 -keyout .chef/localhost.localdomain.key -out localhost.localdomain.pem -days 1000 -nodes -subj "/CN=localhost.localdomain"
+      echo "** Generating ssl certificate"
+      openssl req -x509 -newkey rsa:4096 \
+        -keyout .chef/${var.instance["hostname"]}.${var.instance["domain"]}.key \
+        -out .chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem \
+        -days 1000 -nodes -subj "/CN=${var.instance["hostname"]}.${var.instance["domain"]}"
 
     EOF
   }
@@ -41,12 +45,12 @@ resource "null_resource" "chef-server_configure" {
 
   ## Put certificate key
   provisioner "file" {
-    content        = "${local.chef_ssl_private_key}"
+    source         = "${local.chef_ssl_private_key}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key"
   }
   # Put certificate
   provisioner "file" {
-    content        = "${local.chef_ssl_cert}"
+    source         = "${local.chef_ssl_cert}"
     destination    = ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.pem"
   }
   # Upload Attributes file .chef/dna.json for the chef-solo run
@@ -55,6 +59,7 @@ resource "null_resource" "chef-server_configure" {
     destination    = ".chef/dna.json"
   }
 
+  # install and configure
   provisioner "remote-exec" {
     inline = <<-EOF
       set -e
@@ -76,7 +81,7 @@ resource "null_resource" "chef-server_configure" {
       sudo cp -f .chef/${var.instance["hostname"]}.${var.instance["domain"]}.* /var/chef/ssl/
 
       echo "** Downloading cookbooks"
-      for DEP in chef-client chef-server chef-ingredient system; do 
+      for DEP in chef-client chef-server chef-ingredient; do 
         echo "   - downloading cookbook $DEP" 
         curl -sL https://supermarket.chef.io/cookbooks/$DEP/download | sudo tar --warning=no-unknown-keyword -xzC /var/chef/cookbooks;
       done
@@ -95,6 +100,7 @@ resource "null_resource" "chef-server_configure" {
       echo "** Correct ownership on .chef so we can scp the files"
       sudo chown -R ${local.user} .chef
   
+      echo 
     EOF
   }
 
@@ -150,7 +156,7 @@ resource "null_resource" "chef-server_configure" {
     environment     = "_default"
     log_to_file     = "${var.chef_log}"
     node_name       = "${local.public_dns}"
-    run_list        = ["recipe[system::default]","recipe[chef-client::default]","recipe[chef-client::config]","recipe[chef-client::cron]","recipe[chef-client::delete_validation]","recipe[chef-server::default]","recipe[chef-server::addons]"]
+    run_list        = ["recipe[chef-client::default]"] #,"recipe[system::default]","recipe[chef-client::config]","recipe[chef-client::cron]","recipe[chef-client::delete_validation]","recipe[chef-server::default]","recipe[chef-server::addons]"]
     server_url      = "https://${local.public_dns}/organizations/${var.chef_org["short"]}"
     skip_install    = true
     user_name       = "${var.chef_user["username"]}"
