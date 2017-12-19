@@ -100,7 +100,9 @@ resource "null_resource" "chef-server_configure" {
       echo "** Correct ownership on .chef so we can scp the files"
       sudo chown -R ${local.user} .chef
   
-      echo 
+      echo "** Berkshelf Gem"
+      sudo yum install -y gcc
+      sudo /opt/chef/embedded/bin/gem install berkshelf 
     EOF
   }
 
