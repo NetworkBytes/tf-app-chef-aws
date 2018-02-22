@@ -120,22 +120,22 @@ resource "null_resource" "chef-server_configure" {
       cp -f .chef/${var.chef_user["username"]}.pem .chef/user.pem
 
       echo "** Generate knife.rb"
-      cat > .chef/knife.rb <<-EOK
-      ${data.template_file.knife-rb.rendered}
-      EOK
+cat > .chef/knife.rb <<-EOK
+${data.template_file.knife-rb.rendered}
+EOK
 
-      echo  Write generated template file
-      cat > .chef/chef-server.creds <<-EOC
-      ${data.template_file.chef-server-creds.rendered}
-      EOC
+echo  Write generated template file
+cat > .chef/chef-server.creds <<-EOC
+${data.template_file.chef-server-creds.rendered}
+EOC
 
     EOF
   }
 
-  # Upload knife.rb
+  # Upload knife.rb to chef server
   provisioner "file" {
-    content        = "${data.template_file.knife-rb.rendered}"
-    destination    = ".chef/knife.rb"
+    source      = ".chef/knife.rb"
+    destination = ".chef/knife.rb"
   }
 
 
