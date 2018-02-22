@@ -7,3 +7,4 @@ chef_server_url          'https://${fqdn}/organizations/${org}'
 cache_type               'BasicFile'
 cache_options( :path => "#{current_dir}/checksums" )
 cookbook_path            ["#{current_dir}/local-mode-cache/cache/cookbooks"]
+ssl_verify_mode          :verify_none

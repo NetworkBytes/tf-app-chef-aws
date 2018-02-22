@@ -7,14 +7,8 @@ locals {
   chef_ssl_private_key  = "${var.chef_ssl["key"]  == "" ? ".chef/${var.instance["hostname"]}.${var.instance["domain"]}.key" : var.chef_ssl["key"]}"
 
 
-  #TODO generate sg's and subnets
-  config = {
-    name = "chef-server"
-    subnet_id = "subnet-a0de23f9"
-    vpc_security_group_ids = "sg-8233e0e4,sg-090cdf6f"
-    associate_public_ip_address = "true"
-    instance_type = "t2.large"
-  }
+  #TODO generate this
+  config = "${var.config}"
 
   # Vars after instance is provisioned
   user = "${module.chef-server.user}"

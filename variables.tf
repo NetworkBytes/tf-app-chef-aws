@@ -1,3 +1,13 @@
+#########################################
+# Config Map variable
+#########################################
+
+variable "config" {
+  type = "map"
+  description = "Config Map which can be passed to this module"
+  default {}
+}
+
 
 #
 # specific configs
